@@ -42,15 +42,6 @@ VariableGenes <- function(data.use, dispersion.cutoff = dispersion.cutoff, mean.
 
 
 
-
-
-
-
-
-
-
-
-
 #'  Split dataset by cluster
 #'
 #'  Takes in dataframe to be split and an cluster identifier column and outputs n number of dataframes (n = number of clusters)
@@ -63,8 +54,6 @@ VariableGenes <- function(data.use, dispersion.cutoff = dispersion.cutoff, mean.
 split_clusters <- function(data, clusterIDcol) {
   out <- split(data , f = as.factor(clusterIDcol))
 }
-
-
 
 
 

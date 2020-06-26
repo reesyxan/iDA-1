@@ -29,7 +29,7 @@
 
 ## S4 method for signature 'ANY'
 iDA <- function(data.use, 
-                scaled,
+                scaled = FALSE,
                 mean.low.cutoff = 0.1, 
                 mean.high.cutoff = 8,
                 dispersion.cutoff = 1,
@@ -40,11 +40,18 @@ iDA <- function(data.use,
                 set.seed = FALSE
                 ){
 
+
   #scale data
-  if (scaled == FALSE){
-    log1p(x = x / (exp(x = sum(log1p(x = x[x > 0]), na.rm = TRUE) / length(x = x))))
+ # if (scaled == FALSE){
+  #  data.use <- log1p( data.use / (exp(sum(log1p(data.use[data.use > 0]), na.rm = TRUE) / length( data.use))))
     
-  }
+   # AA <- as(data.use, "dgTMatrix")
+    #data.use@x <- data.use@x / colSums(data.use)[AA@j + 1L]
+    
+    #data.use@x <- data.use@x / rep.int(colSums(data.use), diff(data.use@p))
+}
+
+
   #find variable features
   svd_time = 0 
   var.features <- VariableGenes(data.use, dispersion.cutoff = dispersion.cutoff, mean.low.cutoff = mean.low.cutoff, mean.high.cutoff = mean.high.cutoff)

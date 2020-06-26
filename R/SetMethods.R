@@ -8,13 +8,14 @@
 #' 
 
 setGeneric("iDA", signature=c("object"), 
-function(object, columns=NULL, ...) standardGeneric("iDA"))
+function(object, ...) standardGeneric("iDA"))
 
 
 #' Method for SingleCellExperiment object to input data to iDA 
 #' 
 #' @param object The single cell experiment object to run iDA on
 #' @param ... Additonal arguments passed to object constructors
+#' @importFrom  SingleCellExperiment SingleCellExperiment
 #' @return SingleCellExperiment object with iDA cell weights and gene weights stored in reducedDims and cluster assignemts
 #' stored in rowLabels
 #' @export
@@ -22,13 +23,13 @@ function(object, columns=NULL, ...) standardGeneric("iDA"))
 #' 
 
 setMethod("iDA", "SingleCellExperiment",
-          function(object, columns, ...) {
+          function(object, ...) {
             counts <- assay(object)
             
             iDA_sce <- iDA(t(counts))
             
             reducedDims(object) <- list(iDA_cellweights = iDA_sce[2], iDA_geneweights = iDA_sce[3])
-            rowLabels(object) <- iDA(iDA_clusters = iDA_sce[1])
+            rowLabels(object) <- iDA_sce[1]
             
             return(object)
           })
@@ -38,15 +39,16 @@ setMethod("iDA", "SingleCellExperiment",
 #' 
 #' @param object The single cell experiment object to run iDA on
 #' @param ... Additonal arguments passed to object constructors
+#' @importFrom Seurat Seurat
 #' @return Seurat object with iDA cell weights and gene weights stored in object[["iDA"]] and cluster assignemts stored in rowLabels
 #' @export
 #' 
 #' 
 
 setMethod("iDA", "Seurat",
-          function(object, columns, ...) {
+          function(object, ...) {
             
-            if (('scaled.data' %in% slotNames(pbmc)) == FALSE){
+            if (!('scaled.data' %in% slotNames(object))){
               object <- NormalizeData(object, normalization.method = "LogNormalize", scale.factor = 10000)
               all.genes <- rownames(object)
               object <- ScaleData(object)
@@ -63,5 +65,5 @@ setMethod("iDA", "Seurat",
         
             return(object)
           })
-
+class(pbmc)
 

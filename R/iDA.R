@@ -2,60 +2,49 @@
 #'
 #'  Takes scaled data and iterates between clustering using the Louvain community detection method and embedding in LDA space, then recluster in
 #'  the LDA transformed data space.
-#'@param data.use A dataframe of scaled data to find embedding for. (sample x feature)
-#'@param mean.low.cutoff  Bottom cutoff on x-axis for identifying variable genes
-#'@param mean.high.cutoff Top cutoff on x-axis for identifying variable genes
-#'@param dispersion.cutoff Bottom cutoff on y-axis for identifying variable genes
-#' @param dims.use A vector of the dimensions to use in construction of the SNN
-#' graph (e.g. To use the first 10 PCs, pass 1:10)
-#' @param k.param Defines k for the k-nearest neighbor algorithm
-#' @param prune.SNN Sets the cutoff for acceptable Jaccard index when
+#'  
+#' @param data.use (data.frame) A dataframe of scaled data to find embedding for. (sample x feature)
+#' @param scaled (boolean) Indicates whether input counts are scaled or raw. (TRUE --- scaled, FALSE --- not scaled)
+#' @param mean.low.cutoff  (numeric) Bottom cutoff on mean for identifying variable genes, passed to function [`VariableGenes`]
+#' @param mean.high.cutoff (numeric) Top cutoff on mean for identifying variable genes (passed to [`VariableGenes`])
+#' @param dispersion.cutoff (numeric) Bottom cutoff on dispersion for identifying variable genes (passed to [`VariableGenes`])
+#' @param dims.use (numeric) A vector of the dimensions to use in construction of the SNN
+#' graph (e.g. To use the first 10 PCs, pass 1:10) (passed to [`getSNN`])
+#' @param k.param (numeric) Defines k for the k-nearest neighbor algorithm (passed to [`getSNN`])
+#' @param prune.SNN (numeric) Sets the cutoff for acceptable Jaccard index when
 #' computing the neighborhood overlap for the SNN construction. Any edges with
 #' values less than or equal to this will be set to 0 and removed from the SNN
 #' graph. Essentially sets the strigency of pruning (0 --- no pruning, 1 ---
-#' prune everything).
-#' @param nn.eps Error bound when performing nearest neighbor seach using RANN;
-#' default of 0.0 implies exact nearest neighbor search
+#' prune everything). Passed to [`getSNN`]
 #' @param diag Diagonalize the within class scatter matrix (assume the features are independent
 #' within each cluster)
-#' @param decompose.fxn Which method to use for computing eigenvectors. Available methods are:
-#' \itemize{
-#' \item{svd:}{ use svd() function to find singular value decomposition [default]}
-#' \item{irlba:}{use irlba() function: Fast and memory efficient methods for truncated singular value decomposition
-#'  and principal components analysis of large sparse and dense matrices.}
-#' }
-#' @param resolution The resolution parameter to use for Louvain modularity clustering
-#' @param reduction.type Type of reduction to use in the iterative step. Available methods are:
-#' \itemize{
-#' \item{LDA:}{ use linear discriminant analysis to find discriminants between classes (assumes equal covariance of clusters) [default]}
-#' \item{QDA:}{use quadratic discriminant analysis to find discriminants between classes (allows for different covariances between clusters)
-#'
+#' @param set.seed (numeric or FALSE) seed random number generator before building KNN graph. (passed to [`getSNN`])
 #'
 #' @import irlba 
 #' @import igraph
-#' @import FNN
-#' @import RANN 
-#' @import scran
-#'@return n number of dataframes for each cluster's data
+#' @return n number of dataframes for each cluster's data
 #'
 #'@export
 
 
-iDA <- function(data.use,  
+## S4 method for signature 'ANY'
+iDA <- function(data.use, 
+                scaled,
                 mean.low.cutoff = 0.1, 
                 mean.high.cutoff = 8,
                 dispersion.cutoff = 1,
                 k.param = 10,
                 prune.SNN = 1/15,
-                nn.eps = 0,
-                reduction.type = "LDA",
                 dims.use = 10,
                 diag = FALSE, 
-                set.seed = FALSE,
-                resolution = 1.0
+                set.seed = FALSE
                 ){
 
-
+  #scale data
+  if (scaled == FALSE){
+    log1p(x = x / (exp(x = sum(log1p(x = x[x > 0]), na.rm = TRUE) / length(x = x))))
+    
+  }
   #find variable features
   svd_time = 0 
   var.features <- VariableGenes(data.use, dispersion.cutoff = dispersion.cutoff, mean.low.cutoff = mean.low.cutoff, mean.high.cutoff = mean.high.cutoff)
@@ -81,23 +70,30 @@ svd_time <- svd_time + (end_svd - start_svd)
 louvain_time <- 0
 start_louvain <- Sys.time()
 
-      snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN, nn.eps = 0)
-      
+      snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
+  
     #cluster
-      louvainClusters = getLouvain(snn, resolution = resolution, random.seed = set.seed)
+      walktrapClusters = igraph::cluster_walktrap(snn)
+
       
-      clusters <- c(rep(1, dim(snn)[1]))
-      clusters <- cbind(clusters, louvainClusters)
+    #pick highet modularity 
+      modularity = c()
+      for (i in 1:15){
+        modularity = c(modularity,  modularity(snn, igraph::cut_at(walktrapClusters, n = i)))
+        
+      }
+      
+      maxmodclust <- igraph::cut_at(walktrapClusters, n = which.max(modularity))
+      clusters <- cbind(start = rep(1,dim(transformed)[1]), currentclust = maxmodclust)
+      
 end_louvain <- Sys.time()
+louvain_time = louvain_time + (end_louvain - start_louvain)
 
       rownames(clusters) <- rownames(transformed)
 
 
-      
-louvain_time = louvain_time + (end_louvain - start_louvain)
-
-      i = 1
     #start iterations
+    i = 1
     while(sum(clusters[,dim(clusters)[2]-1] == clusters[,dim(clusters)[2]])/dim(clusters)[1] < .98) {
       concordance = sum(clusters[,dim(clusters)[2]-1] == clusters[,dim(clusters)[2]])/dim(clusters)[1]
       message(paste0("iteration ", i))
@@ -105,29 +101,26 @@ louvain_time = louvain_time + (end_louvain - start_louvain)
 
       #merge data with cluster
         currentcluster <- as.data.frame(clusters[,i + 1])
-        rownames(currentcluster) <- rownames(clusters)
+        #rownames(currentcluster) <- rownames(clusters)
         merged <- merge(currentcluster, t(var_data), by = 0)
 
       #split by cluster
         splitclusters <- split_clusters(merged, merged[,2])
 
-        
-        #calculate within cluster scatter matrix
-                   Sw <- withinclass_scattermatrix_LDA(splitclusters = splitclusters, diag = diag)
+      #calculate within cluster scatter matrix
+        Sw <- withinclass_scattermatrix_LDA(splitclusters = splitclusters, diag = diag)
          
-                 #calculate between cluster scatter matrix
-                   Sb <- betweenclass_scatter_matrix(splitclusters = splitclusters)
+      #calculate between cluster scatter matrix
+       Sb <- betweenclass_scatter_matrix(splitclusters = splitclusters)
          
-        #Sw-1 %*% Sb
-         start_svd = Sys.time()
-                   eigenvecs <- decomposesvd(Sw, Sb, nu = length(splitclusters) - 1, set.seed = set.seed)
-         end_svd = Sys.time()
+      #Sw-1 %*% Sb
+        start_svd = Sys.time()
+          eigenvecs <- decomposesvd(Sw, Sb, nu = length(splitclusters) - 1, set.seed = set.seed)
+        end_svd = Sys.time()
          
-         svd_time = svd_time + (end_svd - start_svd)
+        svd_time = svd_time + (end_svd - start_svd)
         
-        
-        
-        
+      
 #       if (reduction.type == "LDA") {
 #         #calculate within cluster scatter matrix
 #           Sw <- withinclass_scattermatrix_LDA(splitclusters = splitclusters, diag = diag)
@@ -160,22 +153,33 @@ louvain_time = louvain_time + (end_louvain - start_louvain)
 
       #calculate SNN matrix for top LDs
 start_louvain = Sys.time()
-        snn_transformed <- getSNN(data.use = eigenvectransformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN, nn.eps = 0)
+
+        snn_transformed <- getSNN(data.use = eigenvectransformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
 
       #cluster
-        currentclust <- getLouvain(snn_transformed, resolution = resolution, random.seed = set.seed)
-        clusters <- cbind(clusters, currentclust)
-        i = i + 1
+        walktrapClusters = igraph::cluster_walktrap(snn_transformed)
+
+
+      #pick highest modularity 
+        modularity = c()
+        for (j in 1:15){
+          modularity = c(modularity, modularity(snn_transformed, igraph::cut_at(walktrapClusters, n = j)))
+        }
+
+        maxmodclust <- igraph::cut_at(walktrapClusters, n = which.max(modularity))
+        clusters <- cbind(clusters, maxmodclust)
+        
 
 end_louvain = Sys.time()
 
 louvain_time = louvain_time + (end_louvain - start_louvain)
+i = i + 1
     }
   concordance = sum(clusters[,dim(clusters)[2]-1] == clusters[,dim(clusters)[2]])/dim(clusters)[1]
   geneweights = eigenvecs
   message(paste0("final concordance: "))
   message(paste0(concordance))
-  return(list(clusters[,dim(clusters)[2]], transformed, geneweights, louvain_time, svd_time))
+  return(list(clusters[,dim(clusters)[2]], eigenvectransformed, geneweights, louvain_time, svd_time))
 }
 
 

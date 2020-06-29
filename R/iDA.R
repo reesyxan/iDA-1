@@ -46,7 +46,7 @@ iDA <- function(data.use,
     #data.use@x <- data.use@x / colSums(data.use)[AA@j + 1L]
     
     #data.use@x <- data.use@x / rep.int(colSums(data.use), diff(data.use@p))
-}
+#}
 
 
   #find variable features

@@ -24,9 +24,7 @@
 #' @return n number of dataframes for each cluster's data
 #'
 #'@export
-
 iDA <- function(data.use,  
-                scaled = FALSE,
                 mean.low.cutoff = 0.1, 
                 mean.high.cutoff = 8,
                 dispersion.cutoff = 1,
@@ -36,17 +34,6 @@ iDA <- function(data.use,
                 diag = FALSE, 
                 set.seed = FALSE
                 ){
-
-
-  #scale data
- # if (scaled == FALSE){
-  #  data.use <- log1p( data.use / (exp(sum(log1p(data.use[data.use > 0]), na.rm = TRUE) / length( data.use))))
-    
-   # AA <- as(data.use, "dgTMatrix")
-    #data.use@x <- data.use@x / colSums(data.use)[AA@j + 1L]
-    
-    #data.use@x <- data.use@x / rep.int(colSums(data.use), diff(data.use@p))
-}
 
 
   #find variable features
@@ -74,7 +61,7 @@ svd_time <- svd_time + (end_svd - start_svd)
 louvain_time <- 0
 start_louvain <- Sys.time()
 
- snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
+      snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
   
     #cluster
       walktrapClusters = igraph::cluster_walktrap(snn)
@@ -159,7 +146,6 @@ louvain_time = louvain_time + (end_louvain - start_louvain)
 start_louvain = Sys.time()
 
         snn_transformed <- getSNN(data.use = eigenvectransformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
-
 
       #cluster
         walktrapClusters = igraph::cluster_walktrap(snn_transformed)

@@ -40,8 +40,7 @@ iDA_core <- function(data.use,
                      dims.use = 10,
                      diag = TRUE, 
                      set.seed = FALSE, 
-                     c.param = NULL,
-                     cluster.method = "walktrap"
+                     c.param = NULL
 ){
 
  # if (scaled == FALSE){
@@ -89,14 +88,6 @@ iDA_core <- function(data.use,
 
 
   #cluster
-    if(cluster.method == "louvain") {
-      snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
-      
-    } else if (cluster.method == "kmeans"){
-      kmeansclusters <- kmeans(transformed, centers = c.param)
-      clusters <- cbind(start = rep(1,dim(transformed)[1]), currentclust = kmeansclusters$cluster)
-
-    } else {
       snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
       if(!is.numeric(set.seed)){
         walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
@@ -119,7 +110,7 @@ iDA_core <- function(data.use,
       } else {
         stop("Invalid c.param")
       }
-    }
+    
     #end_louvain <- Sys.time()
     #louvain_time = louvain_time + (end_louvain - start_louvain)
     
@@ -195,14 +186,6 @@ iDA_core <- function(data.use,
     eigenvectransformed <- t(var_data) %*% eigenvecs[[1]]
 
     #calculate SNN matrix for top LDs
-    
-    if (cluster.method == "louvain") {
-        
-    } else if (cluster.method == "kmeans"){
-      kmeansclusters <- kmeans(eigenvectransformed, centers = c.param)
-      clusters <- cbind(clusters, currentclust = kmeansclusters$cluster)
-      
-    } else {
     #start_louvain = Sys.time()
       snn_transformed <- getSNN(data.use = eigenvectransformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
       #cluster
@@ -223,7 +206,7 @@ iDA_core <- function(data.use,
       } else {
         stop("Invalid c.param")
       }
-    }
+    
  
     #concordance
     counts <- plyr::count(clusters[,(dim(clusters)[2]-1):(dim(clusters)[2])])

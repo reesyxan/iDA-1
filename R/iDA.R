@@ -21,6 +21,7 @@
 #' within each cluster)
 #' @param set.seed (numeric or FALSE) seed random number generator before building KNN graph. (passed to [`getSNN`])
 #' @param c.param (numeric) Defines the number of desired clusters to be found in the embedding
+#' @param stat.cluster (data.frame) A dataframe of the clusters to start with (rownames must be the same as data.use)
 #'
 #' @import irlba
 #' @import igraph
@@ -40,7 +41,8 @@ iDA_core <- function(data.use,
                      dims.use = 10,
                      diag = TRUE, 
                      set.seed = FALSE, 
-                     c.param = NULL
+                     c.param = NULL,
+                     start.cluster = NULL
 ){
 
  # if (scaled == FALSE){
@@ -86,36 +88,43 @@ iDA_core <- function(data.use,
   #louvain_time <- 0
   #start_louvain <- Sys.time()
 
-
-  #cluster
-      snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
-      if(!is.numeric(set.seed)){
-        walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
-      } else if (is.numeric(set.seed)){
-        set.seed(set.seed)
-        walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
-      }
-      
-      #pick highest modularity
-      if (is.null(c.param)){
-        modularity <- c(0)
-        for (i in 2:15){
-          modularity <- c(modularity,  modularity(snn, suppressWarnings(igraph::cut_at(walktrapClusters, n = i))))
+  if (is.null(cluster.start)){
+    #cluster
+        snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
+        if(!is.numeric(set.seed)){
+          walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
+        } else if (is.numeric(set.seed)){
+          set.seed(set.seed)
+          walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
         }
-        maxmodclust <- igraph::cut_at(walktrapClusters, n = which.max(modularity))
-        clusters <- cbind(start = rep(1,dim(transformed)[1]), currentclust = maxmodclust)
-      } else if (is.numeric(c.param)) {
-        maxmodclust <- igraph::cut_at(walktrapClusters, n = c.param)
-        clusters <- cbind(start = rep(1,dim(transformed)[1]), currentclust = maxmodclust)
-      } else {
-        stop("Invalid c.param")
-      }
+        
+        #pick highest modularity
+        if (is.null(c.param)){
+          modularity <- c(0)
+          for (i in 2:15){
+            modularity <- c(modularity,  modularity(snn, suppressWarnings(igraph::cut_at(walktrapClusters, n = i))))
+          }
+          maxmodclust <- igraph::cut_at(walktrapClusters, n = which.max(modularity))
+          clusters <- cbind(start = rep(1,dim(transformed)[1]), currentclust = maxmodclust)
+        } else if (is.numeric(c.param)) {
+          maxmodclust <- igraph::cut_at(walktrapClusters, n = c.param)
+          clusters <- cbind(start = rep(1,dim(transformed)[1]), currentclust = maxmodclust)
+        } else {
+          stop("Invalid c.param")
+        }
+        rownames(clusters) <- rownames(transformed)
+        
+  } else {
+    if (rownames(start.cluster) == rownames(data.use)){
+      clusters <- start.cluster
+    } else {
+      stop("Invalid start clusters. Check rownames match data.use.")
+    }
+  }
     
     #end_louvain <- Sys.time()
     #louvain_time = louvain_time + (end_louvain - start_louvain)
     
-    rownames(clusters) <- rownames(transformed)
-  
   #concordance
   counts <- plyr::count(clusters[,(dim(clusters)[2]-1):(dim(clusters)[2])])
   splitcounts <- split(counts , f = as.factor(counts[,1]))

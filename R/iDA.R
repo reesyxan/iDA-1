@@ -21,7 +21,7 @@
 #' within each cluster)
 #' @param set.seed (numeric or FALSE) seed random number generator before building KNN graph. (passed to [`getSNN`])
 #' @param c.param (numeric) Defines the number of desired clusters to be found in the embedding
-#' @param stat.cluster (data.frame) A dataframe of the clusters to start with (rownames must be the same as data.use)
+#' @param stat.cluster (data.frame) A dataframe with the first column being the numeric clusters to start with (rownames must be the same as data.use)
 #'
 #' @import irlba
 #' @import igraph
@@ -88,7 +88,7 @@ iDA_core <- function(data.use,
   #louvain_time <- 0
   #start_louvain <- Sys.time()
 
-  if (is.null(cluster.start)){
+  if (is.null(start.cluster)){
     #cluster
         snn <- getSNN(data.use = transformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
         if(!is.numeric(set.seed)){

@@ -21,7 +21,7 @@
 #' within each cluster)
 #' @param set.seed (numeric or FALSE) seed random number generator before building KNN graph. (passed to [`getSNN`])
 #' @param c.param (numeric) Defines the number of desired clusters to be found in the embedding
-#' @param stat.cluster (data.frame) A dataframe with the first column being the numeric clusters to start with (rownames must be the same as data.use)
+#' @param start.cluster (data.frame) A dataframe with the first column being the numeric clusters to start with (rownames must be the same as data.use)
 #'
 #' @import irlba
 #' @import igraph

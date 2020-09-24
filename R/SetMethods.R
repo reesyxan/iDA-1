@@ -24,7 +24,7 @@ setMethod("iDA", "matrix",
 #' @param object The single cell experiment object to run iDA on
 #' @param ... Additonal arguments passed to object constructors
 #' @importFrom  SingleCellExperiment SingleCellExperiment
-#' @return SingleCellExperiment object with iDA cell weights and gene weights stored in reducedDims and cluster assignemts
+#' @return SingleCellExperiment object with iDA cell weights and gene weights stored in reducedDims and cluster assignments
 #' stored in rowLabels
 #' @export
 setMethod("iDA", "SingleCellExperiment",
@@ -38,7 +38,7 @@ setMethod("iDA", "SingleCellExperiment",
 
 
               normcounts <-  logcounts(object)
-              iDA_sce <- iDA(normcounts, scaled = TRUE, ...)
+              iDA_sce <- iDA(normcounts, NormCounts = normcounts, scaled = TRUE, ...)
               reducedDims(object) <- list(iDAcellweights = iDA_sce[[2]])
               colLabels(object) <- list(iDAclusters = iDA_sce[[1]])
               rowData(object[iDA_sce[[4]],]) <- list(iDAgeneweights = iDA_sce[[3]])

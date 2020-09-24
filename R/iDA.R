@@ -29,6 +29,7 @@
 #' @return n number of dataframes for each cluster's data
 #'
 #'@export
+
 iDA_core <- function(data.use,
                      NormCounts = NULL, 
                      scaled = FALSE,
@@ -56,7 +57,7 @@ iDA_core <- function(data.use,
 
   #find variable features
 
-  #  svd_time <- 0 
+    svd_time <- 0 
     if (var.Features == "scran") {
       stats <- scran::modelGeneVar(NormCounts)
       if (dim(data.use)[1] < 3000){
@@ -70,7 +71,7 @@ iDA_core <- function(data.use,
     }
 
   #calculate svd for covariance matrix of variable_features
-  #start_svd <- Sys.time()
+  start_svd <- Sys.time()
     var_data <- data.use[var.features,]
     if(!is.numeric(set.seed)){
       svd <- svdr(as.matrix(var_data), k = dims.use)
@@ -78,15 +79,15 @@ iDA_core <- function(data.use,
       set.seed(set.seed)
       svd <- svdr(as.matrix(var_data), k = dims.use)
     }
-    #end_svd <- Sys.time()
-    #svd_time <- svd_time + (end_svd - start_svd)
+    end_svd <- Sys.time()
+    svd_time <- svd_time + (end_svd - start_svd)
   #transform data
     transformed <- svd$v
     rownames(transformed) <- colnames(var_data)
     
   #calculate SNN matrix for top PC's
-  #louvain_time <- 0
-  #start_louvain <- Sys.time()
+  louvain_time <- 0
+  start_louvain <- Sys.time()
 
   if (is.null(start.cluster)){
     #cluster
@@ -122,18 +123,18 @@ iDA_core <- function(data.use,
     }
   }
     
-    #end_louvain <- Sys.time()
-    #louvain_time = louvain_time + (end_louvain - start_louvain)
+    end_louvain <- Sys.time()
+    louvain_time = louvain_time + (end_louvain - start_louvain)
     
   #concordance
-  counts <- plyr::count(clusters[,(dim(clusters)[2]-1):(dim(clusters)[2])])
-  splitcounts <- split(counts , f = as.factor(counts[,1]))
-  maxsplit <- c()
-  for (j in 1:length(splitcounts))  {
-    maxsplit <- c(maxsplit, max(splitcounts[[j]]$freq))
-  }  
-  concordance <- sum(maxsplit)/dim(data.use)[2]
-
+ # counts <- plyr::count(clusters[,(dim(clusters)[2]-1):(dim(clusters)[2])])
+  #splitcounts <- split(counts , f = as.factor(counts[,1]))
+  #maxsplit <- c()
+  #for (j in 1:length(splitcounts))  {
+   # maxsplit <- c(maxsplit, max(splitcounts[[j]]$freq))
+  #}  
+  #concordance <- sum(maxsplit)/dim(data.use)[2]
+  concordance <- adjustedRandIndex(clusters[,(dim(clusters)[2]-1)], clusters[,(dim(clusters)[2])])
   
   
   #start iterations
@@ -158,11 +159,11 @@ iDA_core <- function(data.use,
     Sb <- betweenclass_scatter_matrix(splitclusters = splitclusters)
 
     #Sw-1 %*% Sb
-    #   start_svd = Sys.time()
+       start_svd = Sys.time()
     eigenvecs <- decomposesvd(Sw, Sb, nu = length(splitclusters) - 1, set.seed = set.seed)
-    #   end_svd = Sys.time()
+       end_svd = Sys.time()
 
-    #   svd_time = svd_time + (end_svd - start_svd)
+       svd_time = svd_time + (end_svd - start_svd)
 
     #       if (reduction.type == "LDA") {
     #         #calculate within cluster scatter matrix
@@ -173,11 +174,11 @@ iDA_core <- function(data.use,
     #
     #         #Sw-1 %*% Sb
     #
-    # start_svd = Sys.time()
+     #start_svd = Sys.time()
     #           eigenvecs <- decomposesvd(Sw, Sb, nu = length(splitclusters) - 1, set.seed = set.seed)
-    # end_svd = Sys.time()
+     #end_svd = Sys.time()
     #
-    # svd_time = svd_time + (end_svd - start_svd)
+     #svd_time = svd_time + (end_svd - start_svd)
 
     # } else if (reduction.type == "QDA") {
     #   Sw = withinclass_scattermatrix_QDA(splitclusters = splitclusters, diag = diag)
@@ -195,7 +196,7 @@ iDA_core <- function(data.use,
     eigenvectransformed <- t(var_data) %*% eigenvecs[[1]]
 
     #calculate SNN matrix for top LDs
-    #start_louvain = Sys.time()
+    start_louvain = Sys.time()
       snn_transformed <- getSNN(data.use = eigenvectransformed, set.seed = set.seed, k.param = k.param, prune.SNN = prune.SNN)
       #cluster
       walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn_transformed))
@@ -218,16 +219,17 @@ iDA_core <- function(data.use,
     
  
     #concordance
-    counts <- plyr::count(clusters[,(dim(clusters)[2]-1):(dim(clusters)[2])])
-    splitcounts <- split(counts , f = as.factor(counts[,1]))
-    maxsplit <- c()
-    for (j in 1:length(splitcounts))  {
-      maxsplit <- c(maxsplit, max(splitcounts[[j]]$freq))
-    }  
-    concordance <- sum(maxsplit)/dim(data.use)[2]
-
-    #end_louvain = Sys.time()
-    #louvain_time = louvain_time + (end_louvain - start_louvain)
+    #counts <- plyr::count(clusters[,(dim(clusters)[2]-1):(dim(clusters)[2])])
+    #splitcounts <- split(counts , f = as.factor(counts[,1]))
+    #maxsplit <- c()
+    #for (j in 1:length(splitcounts))  {
+    #  maxsplit <- c(maxsplit, max(splitcounts[[j]]$freq))
+    #}  
+    #concordance <- sum(maxsplit)/dim(data.use)[2]
+    concordance <- adjustedRandIndex(clusters[,(dim(clusters)[2]-1)], clusters[,(dim(clusters)[2])])
+      
+    end_louvain = Sys.time()
+    louvain_time = louvain_time + (end_louvain - start_louvain)
     i = i + 1
   }
   
@@ -242,5 +244,5 @@ iDA_core <- function(data.use,
 
   message(paste0("final concordance: "))
   message(paste0(concordance))
-  return(list(clusters[,dim(clusters)[2]], eigenvectransformed, geneweights, var.features, stdev))
+  return(list(clusters[,dim(clusters)[2]], eigenvectransformed, geneweights, var.features, stdev, louvain_time, svd_time))
 }

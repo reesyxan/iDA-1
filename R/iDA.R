@@ -206,7 +206,7 @@ iDA_core <- function(data.use,
       if (is.null(c.param)){
         modularity <- c(0)
         for (j in 2:15){
-          modularity <- c(modularity,  modularity(snn, suppressWarnings(igraph::cut_at(walktrapClusters, n = j))))
+          modularity <- c(modularity,  modularity(snn_transformed, suppressWarnings(igraph::cut_at(walktrapClusters, n = j))))
         }
         maxmodclust <- igraph::cut_at(walktrapClusters, n = which.max(modularity))
         clusters <- cbind(clusters, currentclust = maxmodclust)
